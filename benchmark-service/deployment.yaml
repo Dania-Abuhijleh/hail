@@ -48,5 +48,4 @@ spec:
             secretName: deploy-config
         - name: ssl-config-benchmark
           secret:
-          secretName: ssl-config-benchmark
-
+            secretName: ssl-config-benchmark
