@@ -109,7 +109,7 @@ async def index(request, userdata):  # pylint: disable=unused-argument
     return await render_template('benchmark', request, userdata, 'index.html', context)
 
 
-def on_startup(app):
+async def on_startup(app):
     # app['benchmark_file_list'] = []
     app['gs_reader'] = ReadGoogleStorage()
     files = app['gs_reader'].list_files_in_bucket('hail-benchmarks')
