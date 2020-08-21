@@ -1,9 +1,10 @@
 from aiohttp import web
+import asyncio
 import logging
 from gear import setup_aiohttp_session, web_authenticated_developers_only
 from hailtop.config import get_deploy_config
 from hailtop.tls import get_in_cluster_server_ssl_context
-from hailtop.hail_logging import AccessLogger, configure_logging
+from hailtop.hail_logging import AccessLogger  # , configure_logging
 from web_common import setup_aiohttp_jinja2, setup_common_static_routes, render_template
 from benchmark.utils import ReadGoogleStorage, get_geometric_mean, parse_file_path, enumerate_list_index
 import json
@@ -11,7 +12,7 @@ import re
 import plotly
 import plotly.express as px
 
-configure_logging()
+# configure_logging()
 router = web.RouteTableDef()
 logging.basicConfig(level=logging.DEBUG)
 deploy_config = get_deploy_config()
@@ -20,10 +21,13 @@ log = logging.getLogger('benchmark')
 BENCHMARK_FILE_REGEX = re.compile(r'gs://((?P<bucket>[^/]+)/)((?P<user>[^/]+)/)((?P<version>[^-]+)-)((?P<sha>[^-]+))(-(?P<tag>[^\.]+))?\.json')
 
 
-def get_benchmarks(file_path):
-    read_gs = ReadGoogleStorage()
+# def get_benchmarks(file_path):
+#     read_gs = ReadGoogleStorage()
+def get_benchmarks(app, file_path):
+    gs_reader = app['gs_reader']
     try:
-        json_data = read_gs.get_data_as_string(file_path)
+        # json_data = read_gs.get_data_as_string(file_path)
+        json_data = gs_reader.get_data_as_string(file_path)
         pre_data = json.loads(json_data)
     except Exception:
         message = f'could not find file, {file_path}'
@@ -66,7 +70,8 @@ async def healthcheck(request: web.Request) -> web.Response:  # pylint: disable=
 @web_authenticated_developers_only(redirect=False)
 async def show_name(request: web.Request, userdata) -> web.Response:  # pylint: disable=unused-argument
     file_path = request.query.get('file')
-    benchmarks = get_benchmarks(file_path)
+    # benchmarks = get_benchmarks(file_path)
+    benchmarks = get_benchmarks(request.app, file_path)
     name_data = next((item for item in benchmarks['data'] if item['name'] == str(request.match_info['name'])),
                      None)
 
@@ -90,29 +95,40 @@ async def show_name(request: web.Request, userdata) -> web.Response:  # pylint: 
 @router.get('')
 @web_authenticated_developers_only(redirect=False)
 async def index(request, userdata):  # pylint: disable=unused-argument
+    app = request.app
     file = request.query.get('file')
     if file is None:
         benchmarks_context = None
     else:
-        benchmarks_context = get_benchmarks(file)
+        # benchmarks_context = get_benchmarks(file)
+        benchmarks_context = get_benchmarks(request.app, file)
     context = {'file': file,
                'benchmarks': benchmarks_context,
-               'cached_files': ReadGoogleStorage().list_files_in_bucket('hail-benchmarks')}
+               'benchmark_file_list': app['benchmark_file_list']}
+               # 'cached_files': ReadGoogleStorage().list_files_in_bucket('hail-benchmarks')}
     return await render_template('benchmark', request, userdata, 'index.html', context)
 
 
-def init_app() -> web.Application:
+def on_startup(app):
+    # app['benchmark_file_list'] = []
+    app['gs_reader'] = ReadGoogleStorage()
+    files = app['gs_reader'].list_files_in_bucket('hail-benchmarks')
+    app['benchmark_file_list'] = files
+
+
+# def init_app() -> web.Application:
+def run():
     app = web.Application()
     setup_aiohttp_jinja2(app, 'benchmark')
     setup_aiohttp_session(app)
 
     setup_common_static_routes(router)
     app.add_routes(router)
-    return app
+    # return app
+    app.on_startup.append(on_startup)
 
-
-web.run_app(deploy_config.prefix_application(init_app(), 'benchmark'),
-            host='0.0.0.0',
-            port=5000,
-            access_log_class=AccessLogger,
-            ssl_context=get_in_cluster_server_ssl_context())
+    web.run_app(deploy_config.prefix_application(app, 'benchmark'),
+                host='0.0.0.0',
+                port=5000,
+                access_log_class=AccessLogger,
+                ssl_context=get_in_cluster_server_ssl_context())
