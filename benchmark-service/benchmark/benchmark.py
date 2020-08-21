@@ -4,7 +4,7 @@ import logging
 from gear import setup_aiohttp_session, web_authenticated_developers_only
 from hailtop.config import get_deploy_config
 from hailtop.tls import get_in_cluster_server_ssl_context
-from hailtop.hail_logging import AccessLogger  # , configure_logging
+from hailtop.hail_logging import AccessLogger , configure_logging
 from web_common import setup_aiohttp_jinja2, setup_common_static_routes, render_template
 from benchmark.utils import ReadGoogleStorage, get_geometric_mean, parse_file_path, enumerate_list_index
 import json
@@ -12,7 +12,7 @@ import re
 import plotly
 import plotly.express as px
 
-# configure_logging()
+configure_logging()
 router = web.RouteTableDef()
 logging.basicConfig(level=logging.DEBUG)
 deploy_config = get_deploy_config()
