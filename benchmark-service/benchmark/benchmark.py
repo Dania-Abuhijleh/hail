@@ -4,6 +4,7 @@ from gear import setup_aiohttp_session, web_authenticated_developers_only
 from hailtop.config import get_deploy_config
 from hailtop.tls import get_in_cluster_server_ssl_context
 from hailtop.hail_logging import AccessLogger, configure_logging
+import hailtop.batch as hb
 from web_common import setup_aiohttp_jinja2, setup_common_static_routes, render_template
 from benchmark.utils import ReadGoogleStorage, get_geometric_mean, parse_file_path, enumerate_list_of_trials
 import json
@@ -190,6 +191,21 @@ async def compare(request, userdata):  # pylint: disable=unused-argument
                'benchmarks2': benchmarks_context2,
                'comparisons': comparisons}
     return await render_template('benchmark', request, userdata, 'compare.html', context)
+
+
+@router.post('/submit')
+#@web_authenticated_developers_only(redirect=False)
+async def submit(request):
+    userdata = {}
+    backend = hb.ServiceBackend('my-billing-project', 'my-bucket')
+    b = hb.Batch(backend=backend, name='test')
+    j = b.new_job(name='hello')
+    j.command('echo "hello world"')
+    b.run(open=True)
+    context = {
+        'id': b['id']
+    }
+    return await render_template('benchmark', request, userdata, 'submit.html', context)
 
 
 def init_app() -> web.Application:
