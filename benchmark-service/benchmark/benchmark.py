@@ -6,8 +6,9 @@ import logging
 from gear import setup_aiohttp_session, web_authenticated_developers_only
 from hailtop.config import get_deploy_config
 from hailtop.tls import get_in_cluster_server_ssl_context
-from hailtop.hail_logging import AccessLogger, configure_logging
+from hailtop.hail_logging import AccessLogger
 from hailtop.utils import retry_long_running
+import hailtop.batch_client.aioclient as bc
 from web_common import setup_aiohttp_jinja2, setup_common_static_routes, render_template
 from benchmark.utils import ReadGoogleStorage, get_geometric_mean, parse_file_path, enumerate_list_of_trials,\
     list_benchmark_files, round_if_defined
@@ -21,9 +22,7 @@ import pandas as pd
 import gidgethub
 import gidgethub.aiohttp
 
-configure_logging()
 router = web.RouteTableDef()
-logging.basicConfig(level=logging.DEBUG)
 deploy_config = get_deploy_config()
 log = logging.getLogger('benchmark')
 
@@ -214,6 +213,44 @@ async def compare(request, userdata):  # pylint: disable=unused-argument
     return await render_template('benchmark', request, userdata, 'compare.html', context)
 
 
+@router.post('/api/v1alpha/benchmark/create_benchmark')
+@web_authenticated_developers_only(redirect=False)
+async def submit(request, userdata):  # pylint: disable=unused-argument
+    app = request.app
+    batch_client = app['batch_client']
+    body = await request.json()
+    commit = body['commit']
+
+
+@router.post('/api/v1alpha/benchmark/create_benchmark')
+@web_authenticated_developers_only(redirect=False)
+async def submit(request, userdata):  # pylint: disable=unused-argument
+    app = request.app
+    batch_client = app['batch_client']
+    body = await request.json()
+    sha = body['sha']
+    await submit_batch(sha, batch_client)
+    log.info(f'submitted benchmark batch for commit {sha}')
+    return web.HTTPFound(
+        deploy_config.external_url('benchmark', f'/api/v1alpha/benchmark/batches/{sha}'))
+
+
+@router.get('/api/v1alpha/benchmark/batches/{sha}')
+@web_authenticated_developers_only(redirect=False)
+async def batch_status(request, userdata):  # pylint: disable=unused-argument
+    app = request.app
+    batch_client = app['batch_client']
+    sha = request.match_info['sha']
+    bc = await batch_client
+    batches = [b async for b in bc.list_batches(q=f'sha={sha} running')]
+    try:
+        batch = batches[-1]
+        batch_status = await batch.status()
+    except Exception:
+        batch_status = None
+    return web.json_response({'batch_status': batch_status})
+
+
 async def query_github(app):
     global START_POINT
     github_client = app['github_client']
@@ -244,6 +281,7 @@ async def on_startup(app):
     app['github_client'] = gidgethub.aiohttp.GitHubAPI(aiohttp.ClientSession(),
                                                        'hail-is/hail',
                                                        oauth_token=oauth_token)
+    app['batch_client'] = bc.BatchClient(billing_project='test')
     asyncio.ensure_future(retry_long_running('github_polling_loop', github_polling_loop, app))
 
 
