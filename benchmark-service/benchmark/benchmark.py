@@ -3,7 +3,7 @@ import os
 import aiohttp
 from aiohttp import web
 import logging
-from gear import setup_aiohttp_session, web_authenticated_developers_only
+from gear import setup_aiohttp_session, web_authenticated_developers_only, rest_authenticated_developers_only
 from hailtop.config import get_deploy_config
 from hailtop.tls import get_in_cluster_server_ssl_context
 from hailtop.hail_logging import AccessLogger
@@ -11,7 +11,7 @@ from hailtop.utils import retry_long_running
 import hailtop.batch_client.aioclient as bc
 from web_common import setup_aiohttp_jinja2, setup_common_static_routes, render_template
 from benchmark.utils import ReadGoogleStorage, get_geometric_mean, parse_file_path, enumerate_list_of_trials,\
-    list_benchmark_files, round_if_defined
+    list_benchmark_files, round_if_defined, submit_batch
 import json
 import re
 import plotly
@@ -214,7 +214,7 @@ async def compare(request, userdata):  # pylint: disable=unused-argument
 
 
 @router.post('/api/v1alpha/benchmark/create_benchmark')
-@web_authenticated_developers_only(redirect=False)
+@rest_authenticated_developers_only
 async def submit(request, userdata):  # pylint: disable=unused-argument
     app = request.app
     batch_client = app['batch_client']
@@ -227,7 +227,7 @@ async def submit(request, userdata):  # pylint: disable=unused-argument
 
 
 @router.get('/api/v1alpha/benchmark/batches/{sha}')
-@web_authenticated_developers_only(redirect=False)
+@rest_authenticated_developers_only
 async def batch_status(request, userdata):  # pylint: disable=unused-argument
     app = request.app
     batch_client = app['batch_client']
@@ -253,8 +253,6 @@ async def query_github(app):
         sha = commit.get('sha')
         new_commits.append(commit)
         log.info(f'commit {sha}')
-        START_POINT = commit['commit']['author'].get('date')
-        log.info(f'start point is now {START_POINT}')
     log.info('got new commits')
 
 
