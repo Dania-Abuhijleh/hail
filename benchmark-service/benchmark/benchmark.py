@@ -219,15 +219,6 @@ async def submit(request, userdata):  # pylint: disable=unused-argument
     app = request.app
     batch_client = app['batch_client']
     body = await request.json()
-    commit = body['commit']
-
-
-@router.post('/api/v1alpha/benchmark/create_benchmark')
-@web_authenticated_developers_only(redirect=False)
-async def submit(request, userdata):  # pylint: disable=unused-argument
-    app = request.app
-    batch_client = app['batch_client']
-    body = await request.json()
     sha = body['sha']
     await submit_batch(sha, batch_client)
     log.info(f'submitted benchmark batch for commit {sha}')

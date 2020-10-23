@@ -1,9 +1,12 @@
 from google.cloud import storage
 import re
+import logging
 
 BENCHMARK_BUCKETS = ['hail-benchmarks', 'hail-benchmarks-2']
 
 FILE_PATH_REGEX = re.compile(r'gs://((?P<bucket>[^/]+)/)(?P<path>.*)')
+
+log = logging.getLogger('benchmark')
 
 
 def get_geometric_mean(prod_of_means, num_of_means):
@@ -43,6 +46,16 @@ def list_benchmark_files(read_gs):
     for bucket in BENCHMARK_BUCKETS:
         list_of_files.extend(read_gs.list_files(bucket_name=bucket))
     return list_of_files
+
+
+async def submit_batch(sha, batch_client, bucket_name):
+    batch = batch_client.create_batch()
+    job = batch.create_job(image='ubuntu:18.04',
+                           command=['/bin/bash', '-c', 'touch /io/test; sleep 300'],
+                           output_files=[('/io/test', f'gs://{bucket_name}/benchmark-test/{sha}')])
+    await batch.submit(disable_progress_bar=True)
+    log.info(f'submitting batch for commit {sha}')
+    return job.batch_id
 
 
 class ReadGoogleStorage:

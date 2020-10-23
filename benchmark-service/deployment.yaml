@@ -40,7 +40,7 @@ spec:
 {% endif %}
 {% if scope == "test" or scope == "dev" %}
           - name: START_POINT
-            value: "1"
+            value: "2020-10-01T00:00:00Z" #TODO:
 {% endif %}
 {% if deploy %}
           - name: HAIL_BENCHMARK_BUCKET_NAME
