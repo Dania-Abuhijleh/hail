@@ -55,6 +55,10 @@ int main(int argc, const char ** argv) {
         lsm.dump_map();
         break;
       }
+      case 'q': {
+        lsm.flush_to_disk();
+        break;
+      }
       default:
         std::cout << "unrecognized command " << line << std::endl;
         exit(4);

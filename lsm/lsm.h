@@ -47,7 +47,13 @@ public:
   explicit Level(int _index, std::filesystem::path _directory) :
       index{_index}, level_directory{(std::filesystem::path) _directory / std::to_string(index)} {
     if (std::filesystem::exists(level_directory)) {
-      std::cerr << "WARNING: " << level_directory << " already exists.";
+      std::cerr << "WARNING: hii" << level_directory << " already exists.";
+      using directory_iterator = std::filesystem::directory_iterator;
+      for (const auto& dirEntry : directory_iterator(level_directory)) {
+        std::map<int32_t, maybe_value> m;
+        read_to_map(dirEntry.path(), m);
+        add(m);
+      }
     }
     std::filesystem::create_directory(level_directory);
   }
@@ -71,7 +77,11 @@ public:
     m{}, levels{}, directory{_directory} {
     if (std::filesystem::exists(directory)) {
       std::cerr << "WARNING: " << directory << " already exists.";
-    }
+      using directory_iterator = std::filesystem::directory_iterator;
+      for (const auto& dirEntry : directory_iterator(directory)) {
+        levels.push_back(Level(levels.size(), dirEntry.path().parent_path()));
+      }
+    } //todo: else?
     std::filesystem::create_directory(directory);
   }
   void put(int32_t k, int32_t v, char deleted = 0);
@@ -81,4 +91,5 @@ public:
   Level& get_level(size_t index);
   void add_to_level(std::map<int32_t, maybe_value> m, size_t l_index);
   void dump_map();
+  void flush_to_disk();
 };
