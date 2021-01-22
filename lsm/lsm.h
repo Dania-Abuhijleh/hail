@@ -81,6 +81,19 @@ public:
       for (const auto& dirEntry : directory_iterator(directory)) {
         levels.push_back(Level(levels.size(), dirEntry.path().parent_path()));
       }
+      //todo: maybe call add_to_level instead
+//      using directory_iterator = std::filesystem::directory_iterator;
+//      for (const auto& dirEntry : directory_iterator(directory)) {
+//
+//        using directory_iterator2 = std::filesystem::directory_iterator;
+//        for (const auto& dirEntry2 : directory_iterator2(dirEntry.path())) {
+//          std::map<int32_t, maybe_value> m;
+//          get_level(0).read_to_map(dirEntry2.path(), m);
+//          add_to_level(m, levels.size());
+//        }
+
+        //levels.push_back(Level(levels.size(), dirEntry.path().parent_path()));
+      }
     } //todo: else?
     std::filesystem::create_directory(directory);
   }

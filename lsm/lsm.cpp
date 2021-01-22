@@ -78,9 +78,10 @@ File Level::merge(File older_f, File newer_f) {
   std::map<int32_t, maybe_value> m;
   read_to_map(older_f.filename, m);
   read_to_map(newer_f.filename, m);
-  std::cerr << "merge files " << older_f.filename << "and" << newer_f.filename << " to new file " << "\n";
+  std::cerr << "merge files " << older_f.filename << " and " << newer_f.filename << " to new file " << "\n";
   std::filesystem::remove(older_f.filename);
   std::filesystem::remove(newer_f.filename); //TODO: should this be here?
+  files.clear()
   return write_to_file(m, next_file_path());
 }
 void Level::add(std::map<int32_t, maybe_value> m) {
@@ -101,8 +102,16 @@ void LSM::add_to_level(std::map<int32_t, maybe_value> m, size_t l_index) {
     get_level(l_index).files.pop_back();
     std::filesystem::remove(file_path);
   } else {
-    assert(level.size() < level.max_size);
-    level.add(m);
+    //assert(level.size() < level.max_size);
+    if (level.size() < level.max_size) {
+      level.add(m);
+    } else {
+      std::cout << "error" << "\n";
+      for (auto f : level.files) {
+        std::cout << f.filename << "\n";
+      }
+    }
+
   }
 }
 Level& LSM::get_level(size_t index) {
